@@ -186,6 +186,9 @@ class Handler(BaseHTTPRequestHandler):
             return self._file(os.path.join(BASE_DIR, "static"), path[8:])
         if path == "/viewer":
             return self._send(302, b"", extra={"Location": "/viewer/"})
+        if path.startswith("/viewer/models/"):
+            # models live with the platform, not inside the viewer bundle
+            return self._file(MODELS_DIR, path[len("/viewer/models/"):])
         if path.startswith("/viewer/"):
             if not VIEWER_DIR:
                 return self._send(404, "FluxPlot viewer not installed. Set CRAFTBOT_VIEWER "
