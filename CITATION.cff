@@ -1,0 +1,33 @@
+﻿cff-version: 1.2.0
+message: "If you use this prototype in academic work, please cite the IFLA 2026 paper listed under preferred-citation."
+title: "Landscape Agent Platform"
+abstract: "A local prototype that turns natural-language landscape briefs into an inspectable parameter specification and parametric site geometry, with optional viewer preview and OBJ/DAE/3DM export."
+authors:
+  - family-names: Song
+    given-names: Zeyin
+  - family-names: Jin
+    given-names: Yue
+  - family-names: Zhao
+    given-names: Yuhan
+license: MIT
+type: software
+repository-code: "https://github.com/zeynstudio/landscape-agent-platform"
+keywords:
+  - landscape architecture
+  - generative design
+  - large language models
+  - parametric design
+  - design education
+preferred-citation:
+  type: conference-paper
+  title: "Agent-Driven Generative Design with LLM-MCP: A Pedagogical Catalyst for Flux Pedagogies in Landscape Education"
+  authors:
+    - family-names: Jin
+      given-names: Yue
+    - family-names: Zhao
+      given-names: Yuhan
+    - family-names: Song
+      given-names: Zeyin
+  conference:
+    name: "IFLA World & Asia-Pacific Regional Congress 2026"
+  year: 2026

@@ -1,0 +1,26 @@
+{
+  "mad": {
+    "match": "马岩松|\\bmad\\b|山水城市",
+    "fill": {
+      "shape": "irregular",
+      "terrain": 1.2,
+      "roads": [{"kind": "loop", "width": 4.0, "inset": 4.0}],
+      "water": {"present": true, "position": "center", "radius": 7.0}
+    }
+  },
+  "zaha": {
+    "match": "扎哈|zaha",
+    "fill": {
+      "shape": "irregular",
+      "terrain": 0.6,
+      "roads": [{"kind": "loop", "width": 3.5, "inset": 2.0}]
+    }
+  },
+  "minimal": {
+    "match": "极简|minimal|留白",
+    "fill": {
+      "trees": 12,
+      "terrain": 0.0
+    }
+  }
+}

@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>LANDSCAPE AGENT PLATFORM · 景观生成平台</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  /* ZEYN Studio × FluxPlot 融合设计语言：
+     ZEYN(审美)：Swiss/Editorial——暖白纸面 #F5F5F2、#111 墨、#6B6B68 次级、
+       #D9D9D4 细边框、Inter 字体、4/8/16/24/32 间距阶、紧凑编辑标签、克制动效
+     FluxPlot(功能)：珊瑚红 #f2635f 功能强调、MEK-Mono 数据等宽体、
+       "·" 分隔标签、SPEC 数据面板、历史注册表
+     字体文件复用查看器 /viewer/fonts/ */
+  @font-face {
+    font-family: "HarmonyOS Sans SC";
+    src: url("/viewer/fonts/HarmonyOS_Sans_SC_Regular.ttf") format("truetype");
+    font-weight: normal; font-style: normal; font-display: swap;
+  }
+  @font-face {
+    font-family: "HarmonyOS Sans SC";
+    src: url("/viewer/fonts/HarmonyOS_Sans_SC_Bold.ttf") format("truetype");
+    font-weight: bold; font-style: normal; font-display: swap;
+  }
+  @font-face {
+    font-family: "MEK-Mono";
+    src: url("/viewer/fonts/MEK-Mono.otf") format("opentype");
+    font-display: swap;
+  }
+  :root {
+    /* 与 FluxPlot 查看器同一套主题变量：flux 白底/墨黑/珊瑚红。
+       查看器切风格时经 postMessage 广播 theme，本页三变量+派生色同步换肤 */
+    --bg: #ffffff; --ink: #000000; --sec: #6B6B68; --line: #D9D9D4;
+    --panel: #ffffff;
+    --accent: #f2635f;
+    --sp1: 4px; --sp2: 8px; --sp3: 12px; --sp4: 16px; --sp5: 24px; --sp6: 32px; --sp7: 48px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; background: var(--bg); }
+  body {
+    /* 与查看器完全同一条字体栈（HarmonyOS 中文 + MEK-Mono 数据） */
+    font-family: "HarmonyOS Sans SC", "MEK-Mono", "IBM Plex Mono", Consolas, "Courier New", monospace;
+    color: var(--ink); font-size: 15px;
+    display: flex; flex-direction: column;
+    -webkit-font-smoothing: antialiased;
+    transition: background .25s ease, color .25s ease;
+  }
+  ::selection { background: var(--accent); color: #fff; }
+
+  /* ---------- 头部：编辑式小品牌行 + 风格切换（与查看器 STYLE 同步） ---------- */
+  header {
+    flex: none; display: flex; align-items: baseline; gap: var(--sp4);
+    padding: var(--sp4) var(--sp6) var(--sp3);
+    border-bottom: 1px solid var(--line); user-select: none;
+  }
+  header .mark { width: 10px; height: 10px; background: var(--accent); flex: none;
+                 transform: translateY(1px); }
+  header h1 { font-size: 15px; font-weight: 700; letter-spacing: 0.5px; }
+  header .sub { font-size: 12px; color: var(--sec); letter-spacing: 0.5px; }
+  #stylebar { margin-left: auto; display: flex; gap: 2px; align-items: baseline; }
+  #stylebar .schip {
+    font-size: 11px; letter-spacing: 1px; color: var(--sec); cursor: pointer;
+    padding: 3px 8px; border: 1px solid transparent; border-radius: 2px;
+    transition: all .15s ease;
+  }
+  #stylebar .schip:hover { color: var(--ink); border-color: var(--line); }
+  #stylebar .schip.on { color: var(--accent); border-color: var(--accent); }
+  header .ver { font: 11px "MEK-Mono", Consolas, monospace;
+                color: var(--sec); letter-spacing: 1px; }
+
+  main { flex: 1; display: flex; min-height: 0; position: relative; }
+
+  /* ---------- 导出栏（浮于查看器右下——避开右上 viewcube 与底部页脚） ---------- */
+  #exportbar {
+    position: absolute; bottom: var(--sp5); right: var(--sp4); z-index: 5;
+    display: none; align-items: stretch; background: var(--panel);
+    border: 1px solid var(--ink); box-shadow: 3px 3px 0 rgba(17,17,17,.12);
+  }
+  #exportbar.show { display: flex; }
+  #exportbar .lbl {
+    font-size: 10px; letter-spacing: 2px; color: var(--sec);
+    align-self: center; padding: 0 var(--sp3); user-select: none;
+  }
+  #exportbar a {
+    font: 11px "MEK-Mono", Consolas, monospace; letter-spacing: 1px;
+    padding: 8px 12px; color: var(--ink); text-decoration: none;
+    border-left: 1px solid var(--line); cursor: pointer;
+    transition: background .12s ease, color .12s ease;
+  }
+  #exportbar a:hover { background: var(--ink); color: var(--bg); }
+  #exportbar a.off { opacity: .3; pointer-events: none; }
+
+  /* ---------- 左栏 ---------- */
+  #side { width: 25rem; flex: none; border-right: 1px solid var(--line);
+          display: flex; flex-direction: column; overflow-y: auto;
+          scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+  #side > section { padding: 0 var(--sp5); }
+  #side h2 {
+    font-size: 11px; font-weight: 700; letter-spacing: 2px; color: var(--sec);
+    margin: var(--sp6) 0 var(--sp3); user-select: none;
+    display: flex; align-items: baseline; gap: var(--sp2);
+  }
+  #side h2::after { content: ""; flex: 1; border-top: 1px solid var(--line);
+                    transform: translateY(-2px); }
+  #side h2 .zh { font-weight: 400; letter-spacing: 1px; }
+
+  textarea {
+    width: 100%; height: 96px; resize: none;
+    border: 1px solid var(--line); border-radius: 2px; background: var(--panel);
+    padding: var(--sp3) var(--sp4); font-size: 14px; line-height: 1.65;
+    font-family: inherit; color: var(--ink); outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  textarea::placeholder { color: var(--sec); opacity: .7; }
+  textarea:focus { border-color: var(--ink);
+                   box-shadow: 0 1px 0 0 var(--ink); }
+
+  #bar { display: flex; gap: var(--sp2); margin-top: var(--sp3); }
+  button {
+    border: 1px solid var(--ink); border-radius: 2px; background: transparent;
+    color: var(--ink); font-family: inherit; font-size: 13px; letter-spacing: 1px;
+    cursor: pointer; transition: all .15s ease;
+  }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  #go {
+    flex: 1; padding: 11px 0; font-weight: 700;
+    background: var(--ink); color: var(--bg); border-color: var(--ink);
+  }
+  #go:hover { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  #go:disabled { opacity: .35; cursor: wait; }
+  #mic, #fine { width: 44px; font-size: 15px; }
+  #fine { width: auto; padding: 0 12px; font-size: 12px; letter-spacing: 2px; }
+  #mic.on, #fine.on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: var(--sp2); margin-top: var(--sp4); }
+  .chip {
+    font-size: 11.5px; color: var(--sec); border: 1px solid var(--line);
+    border-radius: 2px; padding: 5px 9px; cursor: pointer; user-select: none;
+    background: transparent; transition: all .15s ease;
+  }
+  .chip:hover { border-color: var(--ink); color: var(--ink); }
+
+  #status { margin-top: var(--sp4); font-size: 12px; color: var(--accent);
+            min-height: 1.2em; }
+  #result { margin-top: var(--sp1); font-size: 12px; line-height: 1.8; color: var(--sec); }
+  #result b { color: var(--ink); font-family: "MEK-Mono", Consolas, monospace; }
+  #result a { color: var(--accent); text-decoration: none; }
+  #result a:hover { text-decoration: underline; }
+
+  #spec {
+    border: 1px solid var(--line); border-radius: 2px; background: var(--panel);
+    padding: var(--sp3) var(--sp4);
+    font: 11.5px/1.7 "MEK-Mono", Consolas, monospace;
+    color: var(--ink); white-space: pre-wrap;
+    min-height: 64px; max-height: 240px; overflow: auto;
+    scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+  }
+
+  #explain {
+    border: 1px solid var(--line); border-radius: 2px; background: var(--panel);
+    padding: var(--sp3) var(--sp4);
+    font-size: 12.5px; line-height: 1.9; color: var(--ink);
+    min-height: 48px; max-height: 260px; overflow: auto;
+    scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+  }
+  #explain .tag { color: var(--sec); font-size: 11px; }
+  #explain .placeholder { color: var(--sec); }
+
+  #history { border-top: 1px solid var(--line); }
+  .hist {
+    font-size: 12.5px; color: var(--sec); padding: 7px 2px; cursor: pointer;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    transition: color .15s ease, padding-left .15s ease;
+  }
+  .hist:hover { color: var(--ink); padding-left: 6px; }
+  .hist b {
+    color: var(--ink); font-weight: 400; margin-right: 8px;
+    font-family: "MEK-Mono", Consolas, monospace; font-size: 11px;
+  }
+  .hist:hover b { color: var(--accent); }
+
+  #credit {
+    margin-top: auto; padding: var(--sp5); font-size: 11px; color: var(--sec);
+    letter-spacing: 1px; user-select: none;
+  }
+  #dataset { margin-bottom: var(--sp2); color: var(--accent); }
+
+  /* ---------- 右侧查看器 ---------- */
+  #view { flex: 1; min-width: 0; border: none; background: var(--bg); }
+  #placeholder {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    text-align: center; user-select: none;
+  }
+  #placeholder .big { font-size: 20px; font-weight: 700; letter-spacing: 1px;
+                      line-height: 2; }
+  #placeholder .small { font-size: 12px; color: var(--sec); letter-spacing: 1px; }
+  #placeholder .arrow { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <span class="mark"></span>
+  <h1>LANDSCAPE AGENT PLATFORM</h1>
+  <span class="sub">ZEYN STUDIO · 语义层 → 参数 → 几何 → FLUXPLOT</span>
+  <div id="stylebar"></div>
+  <span class="ver">V0.9 · LOCAL</span>
+</header>
+<main>
+  <div id="side">
+    <section>
+      <h2>PROMPT <span class="zh">· 自然语言输入</span></h2>
+      <textarea id="q" placeholder="例：生成一个60×40米的矩形公园：中央圆形广场半径8米，环路宽4米加十字路，40棵树，东北角一个水池"></textarea>
+      <div id="bar">
+        <button id="go">生成景观 →</button>
+        <button id="fine" title="精细模式：0.25m 栅格 + 边界二次细分（更慢更细腻）">精细</button>
+        <button id="mic" title="语音输入（需浏览器支持）">🎤</button>
+      </div>
+      <div class="chips" id="chips"></div>
+      <div id="status"></div>
+      <div id="result"></div>
+    </section>
+    <section>
+      <h2>SPEC <span class="zh">· 结构化参数</span></h2>
+      <div id="spec">// 生成后显示解析出的设计参数</div>
+    </section>
+    <section>
+      <h2>EXPLAIN <span class="zh">· 设计解读</span></h2>
+      <div id="explain"><span class="placeholder">// 生成后解读：哪些是你说的、哪些是风格补的、哪些是默认</span></div>
+    </section>
+    <section>
+      <h2>HISTORY <span class="zh">· 历史生成</span></h2>
+      <div id="history"></div>
+    </section>
+    <div id="credit"><div id="dataset"></div>ZEYN STUDIO · IFLA 2026 #767 · FLUXPLOT VIEWER</div>
+  </div>
+  <div id="placeholder" style="flex:1">
+    <div>
+      <div class="big"><span class="arrow">←</span> 输入一段话，生成你的第一个景观方案</div>
+      <div class="small">NATURAL LANGUAGE → DESIGN PARAMETERS → 3D LANDSCAPE</div>
+    </div>
+  </div>
+  <iframe id="view" style="display:none"></iframe>
+  <div id="exportbar">
+    <span class="lbl">EXPORT</span><a data-fmt="obj">OBJ</a><a data-fmt="3dm">3DM</a><a data-fmt="dae" title="SketchUp 用 File→Import 导入 DAE（SKP 为闭源格式无法本地直写）">DAE·SKP</a>
+  </div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const EXAMPLES = [
+  "生成一个60×40米的矩形公园：中央圆形广场半径8米，环路宽4米加十字路，40棵树，东北角一个水池",
+  "80乘60米场地，南入口方形广场，环路宽5米，60棵树，地形起伏高差1.5米",
+  "三角形社区公园，50x50米，十字路宽3米，中央广场，25棵树",
+  "六边形口袋公园，直径40米，环路加中央圆形广场半径6米，20棵树",
+  "a 60x40m rectangular park: central plaza radius 8m, loop road 4m wide, 40 trees, a pond"
+];
+EXAMPLES.forEach(t => {
+  const c = document.createElement("span");
+  c.className = "chip"; c.textContent = t.slice(0, 22) + "…";
+  c.title = t; c.onclick = () => { $("q").value = t; $("q").focus(); };
+  $("chips").appendChild(c);
+});
+
+// ---- 主题系统：与 FluxPlot 查看器 styles.js 对齐 ----------------------
+// 查看器里点 STYLE 按钮 → postMessage 广播真实主题色 → 本页换肤；
+// 本页头部点风格 chip → 换肤 + iframe 带 ?style= 重载查看器。双向同步。
+const THEMES = {
+  flux:      {bg: "#ffffff", ink: "#000000", accent: "#f2635f"},
+  plaster:   {bg: "#ffffff", ink: "#000000", accent: "#e5195b"},
+  solid:     {bg: "#ffffff", ink: "#000000", accent: "#e5195b"},
+  mono:      {bg: "#ffffff", ink: "#000000", accent: "#000000"},
+  wireframe: {bg: "#ffffff", ink: "#000000", accent: "#000000"},
+  blueprint: {bg: "#102a66", ink: "#ffffff", accent: "#ffd54a"},
+  dither:    {bg: "#ffffff", ink: "#000000", accent: "#000000"},
+};
+let curStyle = "flux";
+
+function applyTheme(t) {
+  const r = document.documentElement.style;
+  r.setProperty("--bg", t.bg);
+  r.setProperty("--ink", t.ink);
+  r.setProperty("--accent", t.accent);
+  const hex = t.bg.replace("#", "");
+  const lum = parseInt(hex.slice(0, 2), 16) * .3
+            + parseInt(hex.slice(2, 4), 16) * .6
+            + parseInt(hex.slice(4, 6), 16) * .1;
+  const dark = lum < 128;
+  r.setProperty("--sec", dark ? "rgba(255,255,255,.62)" : "#6B6B68");
+  r.setProperty("--line", dark ? "rgba(255,255,255,.22)" : "#D9D9D4");
+  r.setProperty("--panel", dark ? "rgba(255,255,255,.05)" : "#ffffff");
+}
+
+function markStyle(name) {
+  curStyle = name;
+  document.querySelectorAll("#stylebar .schip").forEach(c =>
+    c.classList.toggle("on", c.dataset.style === name));
+}
+
+window.addEventListener("message", (e) => {
+  const d = e.data || {};
+  if (d.type === "fluxplot-theme" && d.theme) {
+    applyTheme(d.theme);          // 查看器内换肤（含 mono/dither 明暗变体）→ 左栏跟随
+    if (d.style) markStyle(d.style);
+  }
+});
+
+const bootParams = new URLSearchParams(location.search);
+
+function viewerUrl(file) {
+  let u = `/viewer/?model=models/${file}&style=${curStyle}`;
+  if (bootParams.get("anim")) u += `&anim=${bootParams.get("anim")}`;     // 截图/演示透传
+  if (bootParams.get("people")) u += `&people=${bootParams.get("people")}`;
+  return u;
+}
+
+function showViewer(url) {
+  $("placeholder").style.display = "none";
+  const v = $("view");
+  v.style.display = "block";
+  v.src = url;
+}
+
+// 导出栏：跟随当前展示的模型 id
+let currentId = null, currentFile = null;
+function setCurrent(id, file) {
+  currentId = id;
+  if (file) currentFile = file;
+  document.querySelectorAll("#exportbar a").forEach(a => {
+    a.href = `/api/export?id=${id}&fmt=${a.dataset.fmt}`;
+  });
+  $("exportbar").classList.add("show");
+}
+
+function setStyle(name) {
+  if (!THEMES[name]) return;
+  markStyle(name);
+  applyTheme(THEMES[name]);       // 先本地换肤（不等 iframe 回消息，响应更快）
+  if (currentFile) showViewer(viewerUrl(currentFile));
+}
+
+Object.keys(THEMES).forEach(name => {
+  const c = document.createElement("span");
+  c.className = "schip" + (name === curStyle ? " on" : "");
+  c.textContent = name; c.dataset.style = name;
+  c.title = "渲染风格：" + name;
+  c.onclick = () => setStyle(name);
+  $("stylebar").appendChild(c);
+});
+// 3DM 依赖 py 环境的 rhino3dm：服务器不支持时置灰
+fetch("/api/health").then(r => r.json()).then(d => {
+  if (d.export3dm === false) {
+    const a = document.querySelector('#exportbar a[data-fmt="3dm"]');
+    a.classList.add("off");
+    a.title = "当前 Python 无 rhino3dm，3DM 不可用（用 run_platform.bat 的 py 环境可恢复）";
+  }
+}).catch(() => {});
+
+async function generate() {
+  const prompt = $("q").value.trim();
+  if (!prompt) { $("status").textContent = "请先输入设计描述"; return; }
+  $("go").disabled = true;
+  $("status").textContent = "";
+  $("result").textContent = "解析语义 → 生成几何 → 注册模型 …";
+  try {
+    const r = await fetch("/api/generate", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({prompt, fine: $("fine").classList.contains("on")})
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || "生成失败");
+    const s = d.stats;
+    const treeNote = (s.trees_requested && s.trees < s.trees_requested)
+      ? `<span style="color:var(--accent)">树 实放 ${s.trees}/${s.trees_requested} 棵（绿地不足）</span>`
+      : `树 ${s.trees} 棵`;
+    const resNote = s.resolution && s.resolution < 0.5 ? ` · 精细 ${s.resolution}m` : "";
+    const roadNote = s.road_mode === "analytic" ? " · 解析道路" : "";
+    $("result").innerHTML =
+      `<b>${d.id}</b> · ${d.engine} · ${s.elements} elements${resNote}${roadNote} · ${treeNote} · ` +
+      `绿地 ${(s.lawn_area != null ? s.lawn_area : s.lawn_cells*0.25).toFixed(0)}㎡ · ` +
+      `道路 ${(s.road_area != null ? s.road_area : s.road_cells*0.25).toFixed(0)}㎡ · ` +
+      `<a href="${d.viewer_url}" target="_blank">新窗口打开 ↗</a>`;
+    // 解析审计：命中率过低说明说法未被规则覆盖，结果接近默认方案
+    const cov = (d.spec && d.spec.audit) ? d.spec.audit.coverage : 1;
+    if (cov < 0.35) {
+      $("status").textContent =
+        `⚠ 语义覆盖率仅 ${(cov * 100).toFixed(0)}%——大部分描述未识别，已按默认方案生成`;
+    }
+    $("spec").textContent = JSON.stringify(d.spec, null, 2);
+    renderExplain(d.explain || []);
+    showViewer(viewerUrl(d.file));
+    setCurrent(d.id, d.file);
+    loadHistory();
+    loadDataset();
+  } catch (e) {
+    $("status").textContent = "出错：" + e.message;
+    $("result").textContent = "";
+  } finally {
+    $("go").disabled = false;
+  }
+}
+$("go").onclick = generate;
+$("fine").onclick = () => $("fine").classList.toggle("on");
+
+// Ask 模式渲染：【】来源标签降色
+function renderExplain(lines) {
+  const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  $("explain").innerHTML = lines.map(l =>
+    esc(l).replace(/(【[^】]*】)/g, '<span class="tag">$1</span>')
+  ).join("<br>") || '<span class="placeholder">// 生成后解读</span>';
+}
+
+// 学习数据集状态行（generations.jsonl 聚合）
+async function loadDataset() {
+  try {
+    const r = await fetch("/api/analytics");
+    const d = await r.json();
+    if (!d.ok || !d.data.total) return;
+    const a = d.data;
+    const styles = Object.entries(a.styles || {}).map(([k, v]) => k + "×" + v).join(" ");
+    $("dataset").textContent =
+      `DATASET · ${a.total} 条 · 覆盖率均值 ${(a.coverage_mean * 100).toFixed(0)}%` +
+      (styles ? ` · 风格 ${styles}` : "");
+  } catch (e) {}
+}
+loadDataset();
+$("q").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); generate(); }
+});
+
+async function loadHistory() {
+  try {
+    const r = await fetch("/api/models");
+    const d = await r.json();
+    const box = $("history");
+    box.innerHTML = "";
+    (d.models || []).slice().reverse().forEach(m => {
+      const div = document.createElement("div");
+      div.className = "hist";
+      div.innerHTML = `<b>${m.id}</b>${m.title.replace(/^GEN\d+ · /, "")}`;
+      div.onclick = () => { showViewer(viewerUrl(m.file)); setCurrent(m.id, m.file); };
+      box.appendChild(div);
+    });
+  } catch (e) {}
+}
+loadHistory();
+
+// 深链：?model=GEN024&style=blueprint 直接打开某个模型（分享/截图用）
+(() => {
+  if (bootParams.get("style") && THEMES[bootParams.get("style")])
+    setStyle(bootParams.get("style"));
+  const mid = bootParams.get("model");
+  if (!mid) return;
+  fetch("/api/models").then(r => r.json()).then(d => {
+    const m = (d.models || []).find(x => x.id === mid.toUpperCase());
+    if (m) { showViewer(viewerUrl(m.file)); setCurrent(m.id, m.file); }
+  }).catch(() => {});
+})();
+
+// 语音输入（浏览器内置语音识别，中文）
+(() => {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { $("mic").style.display = "none"; return; }
+  const rec = new SR();
+  rec.lang = "zh-CN"; rec.interimResults = false;
+  rec.onresult = (e) => {
+    $("q").value = e.results[0][0].transcript;
+    $("mic").classList.remove("on");
+    generate();
+  };
+  rec.onend = () => $("mic").classList.remove("on");
+  rec.onerror = () => $("mic").classList.remove("on");
+  $("mic").onclick = () => { $("mic").classList.add("on"); rec.start(); };
+})();
+</script>
+</body>
+</html>

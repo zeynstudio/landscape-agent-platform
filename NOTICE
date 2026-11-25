@@ -1,0 +1,18 @@
+﻿NOTICE
+
+This project was built for the IFLA 2026 World & Asia-Pacific Regional Congress,
+Abstract #767 ("Agent-Driven Generative Design with LLM-MCP"), Sub-theme 8.
+
+Third-party attribution
+-----------------------
+The optional /viewer/ route expects an installation of the CraftBot viewer:
+
+  CraftBot - https://github.com/lukapiskorec/craftbot
+  Copyright (c) Luka Piškorec, released under the MIT License.
+
+No CraftBot source code, model library, fonts or other assets are bundled in
+this repository. Users who install CraftBot separately must comply with its
+MIT License. The browser UI in static/index.html takes layout and colour cues
+from CraftBot/FluxPlot but is an independent implementation.
+
+No third-party data (student work, planting schedules, renders) is included.
